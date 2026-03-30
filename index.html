@@ -1,412 +1,465 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, Shield, Swords, RefreshCw, Play, Trophy, Skull } from 'lucide-react';
-
-// --- MATH HELPERS ---
-const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const nonZeroRandInt = (min, max) => {
-  let val = 0;
-  while (val === 0) val = randInt(min, max);
-  return val;
-};
-
-const getSuperscript = (n) => {
-  const sup = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
-  return n.toString().split('').map(d => sup[d]).join('');
-};
-
-// Đa thức được biểu diễn bằng mảng các hệ số: index = số mũ. VD: [c, b, a] = c + bx + ax^2
-const multiplyPolys = (p1, p2) => {
-  let result = new Array(p1.length + p2.length - 1).fill(0);
-  for (let i = 0; i < p1.length; i++) {
-    for (let j = 0; j < p2.length; j++) {
-      result[i + j] += p1[i] * p2[j];
-    }
-  }
-  return result;
-};
-
-const formatPoly = (p) => {
-  let terms = [];
-  for (let i = p.length - 1; i >= 0; i--) {
-    if (p[i] === 0) continue;
-    let coeff = p[i];
-    let termStr = "";
-
-    if (terms.length > 0) {
-      termStr += coeff > 0 ? " + " : " - ";
-      coeff = Math.abs(coeff);
-    } else {
-      if (coeff < 0) {
-        termStr += "-";
-        coeff = Math.abs(coeff);
-      }
-    }
-
-    if (coeff !== 1 || i === 0) {
-      termStr += coeff;
-    }
-
-    if (i === 1) termStr += "x";
-    else if (i > 1) termStr += "x" + getSuperscript(i);
-
-    terms.push(termStr);
-  }
-  if (terms.length === 0) return "0";
-  return terms.join("");
-};
-
-// --- GAME DATA ---
-const LEVEL_DATA = [
-  { id: 1, name: "Rừng Nấm Slime", monster: "🦠", color: "from-green-400 to-green-600", desc: "Đơn thức × Đơn thức" },
-  { id: 2, name: "Động Dơi Quỷ", monster: "🦇", color: "from-purple-500 to-purple-700", desc: "Đơn thức × Đa thức" },
-  { id: 3, name: "Thảo Nguyên Sói", monster: "🐺", color: "from-yellow-500 to-orange-600", desc: "Nhị thức × Nhị thức" },
-  { id: 4, name: "Núi Lửa Khủng Long", monster: "🦖", color: "from-red-500 to-red-700", desc: "Nhị thức × Tam thức" },
-  { id: 5, name: "Hang Ổ Rồng Chúa", monster: "🐉", color: "from-gray-700 to-black", desc: "Tam thức × Tam thức (Boss)" }
-];
-
-export default function App() {
-  const [gameState, setGameState] = useState('start'); // start, playing, gameover, victory
-  const [level, setLevel] = useState(1);
-  const [playerHP, setPlayerHP] = useState(5);
-  const [monsterHP, setMonsterHP] = useState(3);
-  const [score, setScore] = useState(0);
-  const [question, setQuestion] = useState(null);
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [feedback, setFeedback] = useState(null); // 'correct', 'wrong'
-  const [animating, setAnimating] = useState(null); // 'playerAttack', 'monsterAttack', 'monsterHurt', 'playerHurt'
-
-  const generateQuestion = useCallback((currentLevel, currentMonsterHP) => {
-    let p1, p2;
-    const step = 4 - currentMonsterHP; // Tính toán giai đoạn của câu hỏi: 1 (dễ), 2 (vừa), 3 (khó)
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chiến Binh Đa Thức</title>
     
-    // Viết tắt để code gọn hơn
-    const r = randInt;
-
-    // Phân cấp độ khó cho TỪNG CÂU HỎI trong 1 hầm (dựa vào step)
-    if (currentLevel === 1) { // Đơn thức x Đơn thức
-      if (step === 1) { p1 = [0, r(2,5)]; p2 = [0, 0, r(2,5)]; }                   // (ax) * (bx^2) - Toàn dương
-      else if (step === 2) { p1 = [0, r(-5,-2)]; p2 = [0, r(2,5)]; }               // (-ax) * (bx) - Âm nhân Dương
-      else { p1 = [0, 0, r(-5,-2)]; p2 = [0, 0, 0, r(-5,-2)]; }                    // (-ax^2) * (-bx^3) - Âm nhân Âm, bậc cao
-    } else if (currentLevel === 2) { // Đơn thức x Đa thức
-      if (step === 1) { p1 = [0, r(2,4)]; p2 = [r(1,5), 1]; }                      // ax(x + b) - Cơ bản
-      else if (step === 2) { p1 = [0, r(-4,-2)]; p2 = [r(-5,-1), r(2,4)]; }        // -ax(bx - c) - Phân phối dấu âm
-      else { p1 = [0, 0, r(-3,-1)]; p2 = [r(1,4), r(-4,-1), 1]; }                  // -ax^2(x^2 - bx + c) - Phức tạp
-    } else if (currentLevel === 3) { // Nhị thức x Nhị thức
-      if (step === 1) { p1 = [r(1,5), 1]; p2 = [r(1,5), 1]; }                      // (x + a)(x + b) - Toàn dương
-      else if (step === 2) { p1 = [r(-5,-1), 1]; p2 = [r(1,5), 1]; }               // (x - a)(x + b) - Đổi dấu
-      else { p1 = [r(-5,-1), r(2,4)]; p2 = [r(-5,-1), r(2,4)]; }                   // (ax - b)(cx - d) - Âm nhân Âm
-    } else if (currentLevel === 4) { // Nhị thức x Tam thức
-      if (step === 1) { p1 = [r(1,4), 1]; p2 = [r(1,4), r(1,4), 1]; }              // (x + a)(x^2 + bx + c)
-      else if (step === 2) { p1 = [r(-4,-1), 1]; p2 = [r(1,4), r(-4,-1), 1]; }     // (x - a)(x^2 - bx + c)
-      else { p1 = [r(-3,-1), r(2,3)]; p2 = [r(-3,-1), r(-3,-1), r(2,3)]; }         // (ax - b)(cx^2 - dx - e)
-    } else { // Tam thức x Tam thức (Boss)
-      if (step === 1) { p1 = [r(1,3), 1, 1]; p2 = [r(1,3), 1, 1]; }                // (x^2 + x + a)(x^2 + x + b)
-      else if (step === 2) { p1 = [r(1,3), r(-3,-1), 1]; p2 = [r(-3,-1), r(1,3), 1]; } // Dấu âm đan xen
-      else { p1 = [r(-3,-1), r(-3,-1), r(2,3)]; p2 = [r(-3,-1), r(1,3), r(-3,-1)]; } // Hệ số phức tạp
-    }
-
-    const correctArr = multiplyPolys(p1, p2);
-    const correctStr = formatPoly(correctArr);
-
-    // Tạo đáp án nhiễu (distractors) thông minh hơn
-    const optionsSet = new Set([correctStr]);
-    let attempts = 0;
-    while (optionsSet.size < 4 && attempts < 50) {
-      let fakeArr = [...correctArr];
-      let errorType = r(1, 3);
-      
-      if (errorType === 1) {
-        // Lỗi sai dấu (Cực kỳ phổ biến: phân phối sai dấu trừ)
-        let idx = r(0, fakeArr.length - 1);
-        if (fakeArr[idx] !== 0) fakeArr[idx] *= -1;
-      } else if (errorType === 2) {
-        // Lỗi tính toán (+- hệ số)
-        let idx = r(0, fakeArr.length - 1);
-        fakeArr[idx] += r(-2, 2) || 1; 
-      } else {
-        // Lỗi quên cộng số mũ hoặc nhân nhầm thành cộng
-        if (Math.random() > 0.5 && fakeArr.length > 2) {
-           let idx = r(0, fakeArr.length - 2);
-           let temp = fakeArr[idx];
-           fakeArr[idx] = fakeArr[idx+1];
-           fakeArr[idx+1] = temp;
-        } else {
-           let idx = r(0, fakeArr.length - 1);
-           fakeArr[idx] = fakeArr[idx] > 0 ? fakeArr[idx] + 2 : fakeArr[idx] - 2;
-        }
-      }
-
-      const fakeStr = formatPoly(fakeArr);
-      if (fakeStr !== correctStr && fakeStr !== "0") optionsSet.add(fakeStr);
-      attempts++;
-    }
-
-    let options = Array.from(optionsSet);
-    options.sort(() => Math.random() - 0.5);
-
-    // Luôn bọc trong ngoặc để chuẩn hóa hiển thị và tránh hiểu lầm dấu
-    let qStr = `(${formatPoly(p1)})(${formatPoly(p2)})`;
-
-    setQuestion({
-      str: qStr,
-      options: options,
-      correct: correctStr
-    });
-    setSelectedOption(null);
-    setFeedback(null);
-  }, []);
-
-  const startGame = () => {
-    setGameState('playing');
-    setLevel(1);
-    setPlayerHP(5);
-    setMonsterHP(3);
-    setScore(0);
-    generateQuestion(1, 3);
-  };
-
-  const handleAnswer = (option) => {
-    if (selectedOption || animating) return;
-    setSelectedOption(option);
-
-    const isCorrect = option === question.correct;
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    if (isCorrect) {
-      setFeedback('correct');
-      setAnimating('playerAttack');
-      
-      setTimeout(() => {
-        setAnimating('monsterHurt');
-        setMonsterHP(prev => {
-          const newHP = prev - 1;
-          if (newHP <= 0) {
-            handleLevelUp();
-            return 3;
-          } else {
-            // Chuyển sang câu hỏi khó hơn của cùng level
-            setTimeout(() => generateQuestion(level, newHP), 800);
-            return newHP;
-          }
-        });
-        setScore(s => s + 10 * level);
-      }, 500);
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for in-browser JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    } else {
-      setFeedback('wrong');
-      setAnimating('monsterAttack');
-      
-      setTimeout(() => {
-        setAnimating('playerHurt');
-        setPlayerHP(prev => {
-          const newHP = prev - 1;
-          if (newHP <= 0) {
-            setTimeout(() => setGameState('gameover'), 800);
-          } else {
-            // Bị trừ máu nhưng giữ nguyên câu hỏi dạng đó để thử lại
-            setTimeout(() => generateQuestion(level, monsterHP), 800);
-          }
-          return newHP;
-        });
-      }, 500);
-    }
-
-    setTimeout(() => {
-      setAnimating(null);
-    }, 1500);
-  };
-
-  const handleLevelUp = () => {
-    if (level === 5) {
-      setTimeout(() => setGameState('victory'), 1000);
-    } else {
-      setTimeout(() => {
-        setLevel(l => l + 1);
-        setPlayerHP(prev => Math.min(5, prev + 1));
-        setMonsterHP(3);
-        generateQuestion(level + 1, 3);
-      }, 1000);
-    }
-  };
-
-  const currentLevelData = LEVEL_DATA[level - 1] || LEVEL_DATA[0];
-
-  // --- RENDERS ---
-  if (gameState === 'start') {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 font-sans text-white">
-        <div className="max-w-md w-full bg-slate-800 rounded-3xl shadow-2xl p-8 text-center border-4 border-indigo-500">
-          <div className="text-6xl mb-4">🧙‍♂️✨</div>
-          <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-2">
-            CHIẾN BINH ĐA THỨC
-          </h1>
-          <p className="text-slate-400 mb-8">Vận dụng quy tắc nhân đa thức để đánh bại quái vật và bảo vệ Vương quốc Toán Học!</p>
-          
-          <div className="text-left bg-slate-700 p-4 rounded-xl mb-8 space-y-2 text-sm text-slate-300">
-            <p>⚔️ Trả lời đúng để tấn công quái vật.</p>
-            <p>🛡️ Trả lời sai bạn sẽ mất HP.</p>
-            <p>🏆 Vượt qua 5 cấp độ từ dễ đến khó để chiến thắng.</p>
-          </div>
-
-          <button 
-            onClick={startGame}
-            className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 rounded-xl font-bold text-xl flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
-          >
-            <Play fill="currentColor" /> Bắt đầu phiêu lưu
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (gameState === 'gameover' || gameState === 'victory') {
-    const isVictory = gameState === 'victory';
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 font-sans text-white">
-        <div className="max-w-md w-full bg-slate-800 rounded-3xl shadow-2xl p-8 text-center border-4 border-indigo-500">
-          <div className="text-7xl mb-6">
-            {isVictory ? '🏆' : '💀'}
-          </div>
-          <h1 className={`text-4xl font-black mb-4 ${isVictory ? 'text-yellow-400' : 'text-red-500'}`}>
-            {isVictory ? 'CHIẾN THẮNG!' : 'THẤT BẠI'}
-          </h1>
-          <p className="text-xl text-slate-300 mb-2">Điểm của bạn: <span className="font-bold text-white">{score}</span></p>
-          <p className="text-slate-400 mb-8">
-            {isVictory 
-              ? "Bạn đã xuất sắc đánh bại Rồng Chúa, chứng tỏ đẳng cấp bậc thầy nhân đa thức!" 
-              : "Đừng nản chí! Hãy ôn lại quy tắc nhân đa thức và cẩn thận với dấu âm nhé."}
-          </p>
-          <button 
-            onClick={startGame}
-            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-xl flex items-center justify-center gap-2 transition-all"
-          >
-            <RefreshCw /> Chơi lại từ đầu
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4 md:p-8 font-sans text-white">
-      {/* CSS Animations */}
-      <style>{`
+    <style>
         @keyframes playerAtk {
-          0% { transform: translateX(0) scale(1); }
-          50% { transform: translateX(50px) scale(1.1); }
-          100% { transform: translateX(0) scale(1); }
+            0% { transform: translateX(0) scale(1); }
+            50% { transform: translateX(50px) scale(1.1); }
+            100% { transform: translateX(0) scale(1); }
         }
         @keyframes monsterAtk {
-          0% { transform: translateX(0) scale(1); }
-          50% { transform: translateX(-50px) scale(1.1); }
-          100% { transform: translateX(0) scale(1); }
+            0% { transform: translateX(0) scale(1); }
+            50% { transform: translateX(-50px) scale(1.1); }
+            100% { transform: translateX(0) scale(1); }
         }
         @keyframes hurt {
-          0% { transform: translateX(0); filter: brightness(1) sepia(0) hue-rotate(0) saturate(1); }
-          25% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
-          50% { transform: translateX(10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
-          75% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
-          100% { transform: translateX(0); filter: brightness(1) sepia(0) hue-rotate(0) saturate(1); }
+            0% { transform: translateX(0); filter: brightness(1) sepia(0) hue-rotate(0) saturate(1); }
+            25% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
+            50% { transform: translateX(10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
+            75% { transform: translateX(-10px); filter: brightness(0.5) sepia(1) hue-rotate(-50deg) saturate(5); }
+            100% { transform: translateX(0); filter: brightness(1) sepia(0) hue-rotate(0) saturate(1); }
         }
         .anim-player-atk { animation: playerAtk 0.4s ease-in-out; }
         .anim-monster-atk { animation: monsterAtk 0.4s ease-in-out; }
         .anim-hurt { animation: hurt 0.4s ease-in-out; }
-      `}</style>
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+    <div id="root"></div>
 
-      <div className="w-full max-w-3xl flex flex-col gap-4">
-        {/* Header / Top Bar */}
-        <div className="flex justify-between items-center bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700">
-          <div>
-            <div className="text-slate-400 text-sm font-bold tracking-wider uppercase mb-1">Cấp độ {level}/5</div>
-            <div className={`text-xl font-black bg-clip-text text-transparent bg-gradient-to-r ${currentLevelData.color}`}>
-              {currentLevelData.name}
-            </div>
-            <div className="text-xs text-slate-400">{currentLevelData.desc}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-slate-400 text-sm font-bold tracking-wider uppercase mb-1">Điểm</div>
-            <div className="text-2xl font-black text-white">{score}</div>
-          </div>
-        </div>
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
 
-        {/* Battle Arena */}
-        <div className="relative bg-slate-800 rounded-3xl shadow-2xl p-6 md:p-12 overflow-hidden border border-slate-700 min-h-[300px] flex items-center justify-between">
-          {/* Background decoration */}
-          <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
-            <Swords size={200} />
-          </div>
+        // --- ICONS (thay thế cho lucide-react) ---
+        const Heart = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+            </svg>
+        );
 
-          {/* Player */}
-          <div className="flex flex-col items-center z-10 w-1/3">
-            <div className="flex gap-1 mb-4">
-              {[...Array(5)].map((_, i) => (
-                <Heart key={i} size={24} className={i < playerHP ? "fill-red-500 text-red-500 drop-shadow-md" : "text-slate-600"} />
-              ))}
-            </div>
-            <div className={`text-7xl md:text-9xl transition-transform ${animating === 'playerAttack' ? 'anim-player-atk z-20' : ''} ${animating === 'playerHurt' ? 'anim-hurt' : ''}`}>
-              🧙‍♂️
-            </div>
-            <div className="mt-4 font-bold text-xl text-blue-300">Pháp Sư</div>
-          </div>
+        const Skull = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <circle cx="9" cy="12" r="1"></circle>
+                <circle cx="15" cy="12" r="1"></circle>
+                <path d="M8 20v2h8v-2"></path>
+                <path d="m12.5 17-.5-1-.5 1h1z"></path>
+                <path d="M16 20a2 2 0 0 0 1.56-3.25 8 8 0 1 0-11.12 0A2 2 0 0 0 8 20"></path>
+            </svg>
+        );
 
-          <div className="text-4xl font-black text-slate-600 z-10 w-1/3 text-center">
-            VS
-          </div>
+        const Swords = ({ size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
+                <line x1="13" y1="19" x2="19" y2="13"></line>
+                <line x1="16" y1="16" x2="20" y2="20"></line>
+                <line x1="19" y1="21" x2="21" y2="19"></line>
+                <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"></polyline>
+                <line x1="5" y1="14" x2="9" y2="18"></line>
+                <line x1="7" y1="17" x2="4" y2="20"></line>
+                <line x1="3" y1="19" x2="5" y2="21"></line>
+            </svg>
+        );
 
-          {/* Monster */}
-          <div className="flex flex-col items-center z-10 w-1/3">
-            <div className="flex gap-1 mb-4">
-              {[...Array(3)].map((_, i) => (
-                <Skull key={i} size={24} className={i < monsterHP ? "fill-purple-500 text-purple-500 drop-shadow-md" : "text-slate-600"} />
-              ))}
-            </div>
-            <div className={`text-7xl md:text-9xl transition-transform ${animating === 'monsterAttack' ? 'anim-monster-atk z-20' : ''} ${animating === 'monsterHurt' ? 'anim-hurt' : 'animate-bounce duration-2000'}`}>
-              {currentLevelData.monster}
-            </div>
-            <div className={`mt-4 font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r ${currentLevelData.color}`}>
-              Quái vật
-            </div>
-          </div>
-        </div>
+        const Play = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        );
 
-        {/* Question & Controls */}
-        {question && (
-          <div className="bg-slate-800 rounded-3xl p-6 shadow-2xl border border-slate-700">
-            <div className="text-center mb-6">
-              <h2 className="text-slate-400 font-bold mb-2">TÍNH KẾT QUẢ CỦA PHÉP NHÂN:</h2>
-              <div className="text-3xl md:text-5xl font-black text-amber-300 font-serif tracking-wide py-6 bg-slate-900 rounded-xl border border-slate-700 shadow-inner overflow-x-auto">
-                {question.str}
-              </div>
-            </div>
+        const RefreshCw = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                <path d="M3 3v5h5"></path>
+            </svg>
+        );
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {question.options.map((opt, idx) => {
-                let btnStateClass = "bg-slate-700 hover:bg-slate-600 border-slate-600 text-white";
-                
-                if (selectedOption !== null) {
-                  if (opt === question.correct) {
-                    btnStateClass = "bg-green-600 border-green-500 text-white animate-pulse";
-                  } else if (opt === selectedOption) {
-                    btnStateClass = "bg-red-600 border-red-500 text-white";
-                  } else {
-                    btnStateClass = "bg-slate-800 border-slate-700 text-slate-500 opacity-50";
-                  }
+        // --- MATH HELPERS ---
+        const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+        const nonZeroRandInt = (min, max) => {
+            let val = 0;
+            while (val === 0) val = randInt(min, max);
+            return val;
+        };
+
+        const getSuperscript = (n) => {
+            const sup = ['⁰', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '⁹'];
+            return n.toString().split('').map(d => sup[d]).join('');
+        };
+
+        const multiplyPolys = (p1, p2) => {
+            let result = new Array(p1.length + p2.length - 1).fill(0);
+            for (let i = 0; i < p1.length; i++) {
+                for (let j = 0; j < p2.length; j++) {
+                    result[i + j] += p1[i] * p2[j];
+                }
+            }
+            return result;
+        };
+
+        const formatPoly = (p) => {
+            let terms = [];
+            for (let i = p.length - 1; i >= 0; i--) {
+                if (p[i] === 0) continue;
+                let coeff = p[i];
+                let termStr = "";
+
+                if (terms.length > 0) {
+                    termStr += coeff > 0 ? " + " : " - ";
+                    coeff = Math.abs(coeff);
+                } else {
+                    if (coeff < 0) {
+                        termStr += "-";
+                        coeff = Math.abs(coeff);
+                    }
                 }
 
+                if (coeff !== 1 || i === 0) {
+                    termStr += coeff;
+                }
+
+                if (i === 1) termStr += "x";
+                else if (i > 1) termStr += "x" + getSuperscript(i);
+
+                terms.push(termStr);
+            }
+            if (terms.length === 0) return "0";
+            return terms.join("");
+        };
+
+        // --- GAME DATA ---
+        const LEVEL_DATA = [
+            { id: 1, name: "Rừng Nấm Slime", monster: "🦠", color: "from-green-400 to-green-600", desc: "Đơn thức × Đơn thức" },
+            { id: 2, name: "Động Dơi Quỷ", monster: "🦇", color: "from-purple-500 to-purple-700", desc: "Đơn thức × Đa thức" },
+            { id: 3, name: "Thảo Nguyên Sói", monster: "🐺", color: "from-yellow-500 to-orange-600", desc: "Nhị thức × Nhị thức" },
+            { id: 4, name: "Núi Lửa Khủng Long", monster: "🦖", color: "from-red-500 to-red-700", desc: "Nhị thức × Tam thức" },
+            { id: 5, name: "Hang Ổ Rồng Chúa", monster: "🐉", color: "from-gray-700 to-black", desc: "Tam thức × Tam thức (Boss)" }
+        ];
+
+        function App() {
+            const [gameState, setGameState] = useState('start');
+            const [level, setLevel] = useState(1);
+            const [playerHP, setPlayerHP] = useState(5);
+            const [monsterHP, setMonsterHP] = useState(3);
+            const [score, setScore] = useState(0);
+            const [question, setQuestion] = useState(null);
+            const [selectedOption, setSelectedOption] = useState(null);
+            const [feedback, setFeedback] = useState(null);
+            const [animating, setAnimating] = useState(null);
+
+            const generateQuestion = useCallback((currentLevel, currentMonsterHP) => {
+                let p1, p2;
+                const step = 4 - currentMonsterHP; 
+                
+                const r = randInt;
+
+                if (currentLevel === 1) { 
+                    if (step === 1) { p1 = [0, r(2,5)]; p2 = [0, 0, r(2,5)]; }                   
+                    else if (step === 2) { p1 = [0, r(-5,-2)]; p2 = [0, r(2,5)]; }               
+                    else { p1 = [0, 0, r(-5,-2)]; p2 = [0, 0, 0, r(-5,-2)]; }                    
+                } else if (currentLevel === 2) { 
+                    if (step === 1) { p1 = [0, r(2,4)]; p2 = [r(1,5), 1]; }                      
+                    else if (step === 2) { p1 = [0, r(-4,-2)]; p2 = [r(-5,-1), r(2,4)]; }        
+                    else { p1 = [0, 0, r(-3,-1)]; p2 = [r(1,4), r(-4,-1), 1]; }                  
+                } else if (currentLevel === 3) { 
+                    if (step === 1) { p1 = [r(1,5), 1]; p2 = [r(1,5), 1]; }                      
+                    else if (step === 2) { p1 = [r(-5,-1), 1]; p2 = [r(1,5), 1]; }               
+                    else { p1 = [r(-5,-1), r(2,4)]; p2 = [r(-5,-1), r(2,4)]; }                   
+                } else if (currentLevel === 4) { 
+                    if (step === 1) { p1 = [r(1,4), 1]; p2 = [r(1,4), r(1,4), 1]; }              
+                    else if (step === 2) { p1 = [r(-4,-1), 1]; p2 = [r(1,4), r(-4,-1), 1]; }     
+                    else { p1 = [r(-3,-1), r(2,3)]; p2 = [r(-3,-1), r(-3,-1), r(2,3)]; }         
+                } else { 
+                    if (step === 1) { p1 = [r(1,3), 1, 1]; p2 = [r(1,3), 1, 1]; }                
+                    else if (step === 2) { p1 = [r(1,3), r(-3,-1), 1]; p2 = [r(-3,-1), r(1,3), 1]; } 
+                    else { p1 = [r(-3,-1), r(-3,-1), r(2,3)]; p2 = [r(-3,-1), r(1,3), r(-3,-1)]; } 
+                }
+
+                const correctArr = multiplyPolys(p1, p2);
+                const correctStr = formatPoly(correctArr);
+
+                const optionsSet = new Set([correctStr]);
+                let attempts = 0;
+                while (optionsSet.size < 4 && attempts < 50) {
+                    let fakeArr = [...correctArr];
+                    let errorType = r(1, 3);
+                    
+                    if (errorType === 1) {
+                        let idx = r(0, fakeArr.length - 1);
+                        if (fakeArr[idx] !== 0) fakeArr[idx] *= -1;
+                    } else if (errorType === 2) {
+                        let idx = r(0, fakeArr.length - 1);
+                        fakeArr[idx] += r(-2, 2) || 1; 
+                    } else {
+                        if (Math.random() > 0.5 && fakeArr.length > 2) {
+                            let idx = r(0, fakeArr.length - 2);
+                            let temp = fakeArr[idx];
+                            fakeArr[idx] = fakeArr[idx+1];
+                            fakeArr[idx+1] = temp;
+                        } else {
+                            let idx = r(0, fakeArr.length - 1);
+                            fakeArr[idx] = fakeArr[idx] > 0 ? fakeArr[idx] + 2 : fakeArr[idx] - 2;
+                        }
+                    }
+
+                    const fakeStr = formatPoly(fakeArr);
+                    if (fakeStr !== correctStr && fakeStr !== "0") optionsSet.add(fakeStr);
+                    attempts++;
+                }
+
+                let options = Array.from(optionsSet);
+                options.sort(() => Math.random() - 0.5);
+
+                let qStr = `(${formatPoly(p1)})(${formatPoly(p2)})`;
+
+                setQuestion({ str: qStr, options: options, correct: correctStr });
+                setSelectedOption(null);
+                setFeedback(null);
+            }, []);
+
+            const startGame = () => {
+                setGameState('playing');
+                setLevel(1);
+                setPlayerHP(5);
+                setMonsterHP(3);
+                setScore(0);
+                generateQuestion(1, 3);
+            };
+
+            const handleAnswer = (option) => {
+                if (selectedOption || animating) return;
+                setSelectedOption(option);
+
+                const isCorrect = option === question.correct;
+                
+                if (isCorrect) {
+                    setFeedback('correct');
+                    setAnimating('playerAttack');
+                    
+                    setTimeout(() => {
+                        setAnimating('monsterHurt');
+                        setMonsterHP(prev => {
+                            const newHP = prev - 1;
+                            if (newHP <= 0) {
+                                handleLevelUp();
+                                return 3;
+                            } else {
+                                setTimeout(() => generateQuestion(level, newHP), 800);
+                                return newHP;
+                            }
+                        });
+                        setScore(s => s + 10 * level);
+                    }, 500);
+
+                } else {
+                    setFeedback('wrong');
+                    setAnimating('monsterAttack');
+                    
+                    setTimeout(() => {
+                        setAnimating('playerHurt');
+                        setPlayerHP(prev => {
+                            const newHP = prev - 1;
+                            if (newHP <= 0) {
+                                setTimeout(() => setGameState('gameover'), 800);
+                            } else {
+                                setTimeout(() => generateQuestion(level, monsterHP), 800);
+                            }
+                            return newHP;
+                        });
+                    }, 500);
+                }
+
+                setTimeout(() => {
+                    setAnimating(null);
+                }, 1500);
+            };
+
+            const handleLevelUp = () => {
+                if (level === 5) {
+                    setTimeout(() => setGameState('victory'), 1000);
+                } else {
+                    setTimeout(() => {
+                        setLevel(l => l + 1);
+                        setPlayerHP(prev => Math.min(5, prev + 1));
+                        setMonsterHP(3);
+                        generateQuestion(level + 1, 3);
+                    }, 1000);
+                }
+            };
+
+            const currentLevelData = LEVEL_DATA[level - 1] || LEVEL_DATA[0];
+
+            if (gameState === 'start') {
                 return (
-                  <button
-                    key={idx}
-                    disabled={selectedOption !== null}
-                    onClick={() => handleAnswer(opt)}
-                    className={`p-4 rounded-xl border-2 text-lg md:text-xl font-bold font-serif transition-all duration-200 transform overflow-x-auto whitespace-nowrap ${selectedOption === null ? 'hover:-translate-y-1 hover:shadow-lg' : ''} ${btnStateClass}`}
-                  >
-                    {opt}
-                  </button>
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                        <div className="max-w-md w-full bg-slate-800 rounded-3xl shadow-2xl p-8 text-center border-4 border-indigo-500">
+                            <div className="text-6xl mb-4">🧙‍♂️✨</div>
+                            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 mb-2">
+                                CHIẾN BINH ĐA THỨC
+                            </h1>
+                            <p className="text-slate-400 mb-8">Vận dụng quy tắc nhân đa thức để đánh bại quái vật và bảo vệ Vương quốc Toán Học!</p>
+                            
+                            <div className="text-left bg-slate-700 p-4 rounded-xl mb-8 space-y-2 text-sm text-slate-300">
+                                <p>⚔️ Trả lời đúng để tấn công quái vật.</p>
+                                <p>🛡️ Trả lời sai bạn sẽ mất HP.</p>
+                                <p>🏆 Vượt qua 5 cấp độ từ dễ đến khó để chiến thắng.</p>
+                            </div>
+
+                            <button 
+                                onClick={startGame}
+                                className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 rounded-xl font-bold text-xl flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+                            >
+                                <Play className="w-6 h-6" /> Bắt đầu phiêu lưu
+                            </button>
+                        </div>
+                    </div>
                 );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+            }
+
+            if (gameState === 'gameover' || gameState === 'victory') {
+                const isVictory = gameState === 'victory';
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                        <div className="max-w-md w-full bg-slate-800 rounded-3xl shadow-2xl p-8 text-center border-4 border-indigo-500">
+                            <div className="text-7xl mb-6">
+                                {isVictory ? '🏆' : '💀'}
+                            </div>
+                            <h1 className={`text-4xl font-black mb-4 ${isVictory ? 'text-yellow-400' : 'text-red-500'}`}>
+                                {isVictory ? 'CHIẾN THẮNG!' : 'THẤT BẠI'}
+                            </h1>
+                            <p className="text-xl text-slate-300 mb-2">Điểm của bạn: <span className="font-bold text-white">{score}</span></p>
+                            <p className="text-slate-400 mb-8">
+                                {isVictory 
+                                    ? "Bạn đã xuất sắc đánh bại Rồng Chúa, chứng tỏ đẳng cấp bậc thầy nhân đa thức!" 
+                                    : "Đừng nản chí! Hãy ôn lại quy tắc nhân đa thức và cẩn thận với dấu âm nhé."}
+                            </p>
+                            <button 
+                                onClick={startGame}
+                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-bold text-xl flex items-center justify-center gap-2 transition-all"
+                            >
+                                <RefreshCw className="w-6 h-6" /> Chơi lại từ đầu
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col items-center p-4 md:p-8">
+                    <div className="w-full max-w-3xl flex flex-col gap-4">
+                        {/* Header / Top Bar */}
+                        <div className="flex justify-between items-center bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700">
+                            <div>
+                                <div className="text-slate-400 text-sm font-bold tracking-wider uppercase mb-1">Cấp độ {level}/5</div>
+                                <div className={`text-xl font-black bg-clip-text text-transparent bg-gradient-to-r ${currentLevelData.color}`}>
+                                    {currentLevelData.name}
+                                </div>
+                                <div className="text-xs text-slate-400">{currentLevelData.desc}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-slate-400 text-sm font-bold tracking-wider uppercase mb-1">Điểm</div>
+                                <div className="text-2xl font-black text-white">{score}</div>
+                            </div>
+                        </div>
+
+                        {/* Battle Arena */}
+                        <div className="relative bg-slate-800 rounded-3xl shadow-2xl p-6 md:p-12 overflow-hidden border border-slate-700 min-h-[300px] flex items-center justify-between">
+                            <div className="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
+                                <Swords size={200} />
+                            </div>
+
+                            {/* Player */}
+                            <div className="flex flex-col items-center z-10 w-1/3">
+                                <div className="flex gap-1 mb-4">
+                                    {[...Array(5)].map((_, i) => (
+                                        <Heart key={i} size={24} className={i < playerHP ? "text-red-500 fill-red-500 drop-shadow-md" : "text-slate-600 fill-none"} />
+                                    ))}
+                                </div>
+                                <div className={`text-7xl md:text-9xl transition-transform ${animating === 'playerAttack' ? 'anim-player-atk z-20' : ''} ${animating === 'playerHurt' ? 'anim-hurt' : ''}`}>
+                                    🧙‍♂️
+                                </div>
+                                <div className="mt-4 font-bold text-xl text-blue-300">Pháp Sư</div>
+                            </div>
+
+                            <div className="text-4xl font-black text-slate-600 z-10 w-1/3 text-center">
+                                VS
+                            </div>
+
+                            {/* Monster */}
+                            <div className="flex flex-col items-center z-10 w-1/3">
+                                <div className="flex gap-1 mb-4">
+                                    {[...Array(3)].map((_, i) => (
+                                        <Skull key={i} size={24} className={i < monsterHP ? "text-purple-500 fill-purple-500 drop-shadow-md" : "text-slate-600 fill-none"} />
+                                    ))}
+                                </div>
+                                <div className={`text-7xl md:text-9xl transition-transform ${animating === 'monsterAttack' ? 'anim-monster-atk z-20' : ''} ${animating === 'monsterHurt' ? 'anim-hurt' : 'animate-bounce duration-2000'}`}>
+                                    {currentLevelData.monster}
+                                </div>
+                                <div className={`mt-4 font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r ${currentLevelData.color}`}>
+                                    Quái vật
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Question & Controls */}
+                        {question && (
+                            <div className="bg-slate-800 rounded-3xl p-6 shadow-2xl border border-slate-700">
+                                <div className="text-center mb-6">
+                                    <h2 className="text-slate-400 font-bold mb-2">TÍNH KẾT QUẢ CỦA PHÉP NHÂN:</h2>
+                                    <div className="text-3xl md:text-5xl font-black text-amber-300 font-serif tracking-wide py-6 bg-slate-900 rounded-xl border border-slate-700 shadow-inner overflow-x-auto">
+                                        {question.str}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {question.options.map((opt, idx) => {
+                                        let btnStateClass = "bg-slate-700 hover:bg-slate-600 border-slate-600 text-white";
+                                        
+                                        if (selectedOption !== null) {
+                                            if (opt === question.correct) {
+                                                btnStateClass = "bg-green-600 border-green-500 text-white animate-pulse";
+                                            } else if (opt === selectedOption) {
+                                                btnStateClass = "bg-red-600 border-red-500 text-white";
+                                            } else {
+                                                btnStateClass = "bg-slate-800 border-slate-700 text-slate-500 opacity-50";
+                                            }
+                                        }
+
+                                        return (
+                                            <button
+                                                key={idx}
+                                                disabled={selectedOption !== null}
+                                                onClick={() => handleAnswer(opt)}
+                                                className={`p-4 rounded-xl border-2 text-lg md:text-xl font-bold font-serif transition-all duration-200 transform overflow-x-auto whitespace-nowrap ${selectedOption === null ? 'hover:-translate-y-1 hover:shadow-lg' : ''} ${btnStateClass}`}
+                                            >
+                                                {opt}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // Render App
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
