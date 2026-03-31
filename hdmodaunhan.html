@@ -11,8 +11,11 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
+        /* Font chữ mô phỏng nét viết hoặc font toán học rõ ràng */
         @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
         
         body {
@@ -21,29 +24,30 @@
         }
 
         .math-font {
-            font-family: 'Times New Roman', Times, serif;
+            font-family: 'Times New Roman', Times, serif; /* Font chữ toán học truyền thống */
             letter-spacing: 1px;
         }
 
+        /* Animation cho các bước xuất hiện */
         @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         .animate-fade-in-down {
             animation: fadeInDown 0.4s ease-out forwards;
         }
 
+        /* Animation cho Chứng nhận */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes scaleUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         .animate-scale-up { animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
-        /* Ẩn nút tăng giảm của thẻ input number */
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; 
-            margin: 0; 
-        }
     </style>
 </head>
 <body>
@@ -52,32 +56,33 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- Icons ---
-        const ChevronRight = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>;
-        const CheckCircle = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>;
-        const PlayCircle = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>;
-        const RotateCcw = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
-        const BookOpen = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
-        const Award = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>;
-        const Trophy = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>;
-        const Sparkles = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 19v4"/><path d="M17 21h4"/></svg>;
-        const ArrowRight = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>;
-        const Edit3 = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>;
-        const ListChecks = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>;
-        const Blocks = ({ className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/></svg>;
-
-        // --- Utils ---
-        const normalizeAnswer = (str) => {
-            if (!str) return "";
-            let s = str.toLowerCase().replace(/\s+/g, '');
-            s = s.replace(/⁰/g, '^0').replace(/¹/g, '^1').replace(/²/g, '^2').replace(/³/g, '^3')
-                 .replace(/⁴/g, '^4').replace(/⁵/g, '^5').replace(/⁶/g, '^6').replace(/⁷/g, '^7');
-            if (s.startsWith('+')) s = s.substring(1);
-            return s;
-        };
+        // Custom Icon Components extracted from Lucide
+        const ChevronRight = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"/></svg>
+        );
+        const CheckCircle = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+        );
+        const PlayCircle = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        );
+        const RotateCcw = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        );
+        const BookOpen = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        );
+        const Award = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+        );
+        const Trophy = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        );
+        const Sparkles = ({ className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 19v4"/><path d="M17 21h4"/></svg>
+        );
 
         // --- Data ---
-        // ĐÃ CẬP NHẬT THỨ TỰ BÀI TẬP: MCQ -> Builder -> Input
         const LEVELS = [
             {
                 id: 0,
@@ -85,346 +90,307 @@
                 desc: "Khởi động nhẹ nhàng. Quy tắc: Nhân hệ số với hệ số, nhân phần biến với phần biến (cộng số mũ).",
                 problem: <><span className="text-blue-600 font-bold">3x²</span> · <span className="text-green-600 font-bold">4x³</span></>,
                 steps: [
-                    { instruction: "Bước 1: Nhóm hệ số và phần biến.", math: <>(<span className="text-blue-600">3</span> · <span className="text-green-600">4</span>) · (<span className="text-blue-600">x²</span> · <span className="text-green-600">x³</span>)</> },
-                    { instruction: "Bước 2: Tính toán.", math: <>12x⁵</>, final: true }
+                    {
+                        instruction: "Bước 1: Nhóm các hệ số và các biến lại với nhau.",
+                        math: <>(<span className="text-blue-600">3</span> · <span className="text-green-600">4</span>) · (<span className="text-blue-600">x²</span> · <span className="text-green-600">x³</span>)</>
+                    },
+                    {
+                        instruction: "Bước 2: Thực hiện phép nhân. (Nhớ quy tắc: x² · x³ = x²⁺³ = x⁵)",
+                        math: <>12x⁵</>,
+                        final: true
+                    }
                 ],
                 exercises: [
                     {
-                        type: 'mcq',
+                        problem: <><span className="text-blue-600 font-bold">5x³</span> · (<span className="text-green-600 font-bold">-2x²</span>)</>,
+                        correct: "-10x⁵",
+                        options: ["-10x⁵", "3x⁵", "-10x⁶", "-7x⁵"]
+                    },
+                    {
                         problem: <><span className="text-blue-600 font-bold">-3x</span> · <span className="text-green-600 font-bold">4x⁴</span></>,
                         correct: "-12x⁵",
                         options: ["-12x⁵", "12x⁵", "-12x⁴", "x⁵"]
                     },
                     {
-                        type: 'builder',
-                        problem: <><span className="text-blue-600 font-bold">5x³</span> · (<span className="text-green-600 font-bold">-2x²</span>)</>,
-                        correct: "-10x⁵",
-                        correctTerms: [{ coef: "-10", varPart: "x⁵" }]
-                    },
-                    {
-                        type: 'input',
                         problem: <><span className="text-blue-600 font-bold">2x²</span> · <span className="text-green-600 font-bold">6x³</span></>,
                         correct: "12x⁵",
+                        options: ["12x⁵", "8x⁵", "12x⁶", "8x⁶"]
                     }
                 ]
             },
             {
                 id: 1,
                 title: "2. Đơn thức × Đa thức",
-                desc: "Tính chất phân phối: Nhân đơn thức với TỪNG hạng tử của đa thức.",
+                desc: "Sử dụng tính chất phân phối: Nhân đơn thức với TỪNG hạng tử của đa thức.",
                 problem: <><span className="text-red-500 font-bold">2x</span> · (x² - 3x + 5)</>,
                 steps: [
-                    { instruction: "Bước 1: Phân phối vào trong ngoặc.", math: <>(<span className="text-red-500">2x</span> · x²) + (<span className="text-red-500">2x</span> · -3x) + (<span className="text-red-500">2x</span> · 5)</> },
-                    { instruction: "Bước 2: Tính từng hạng tử.", math: <>2x³ - 6x² + 10x</>, final: true }
+                    {
+                        instruction: "Bước 1: Phân phối (nhân) đơn thức 2x vào từng hạng tử bên trong ngoặc.",
+                        math: <>(<span className="text-red-500">2x</span> · x²) + (<span className="text-red-500">2x</span> · -3x) + (<span className="text-red-500">2x</span> · 5)</>
+                    },
+                    {
+                        instruction: "Bước 2: Tính kết quả của từng cụm phép nhân.",
+                        math: <>2x³ + (-6x²) + 10x</>
+                    },
+                    {
+                        instruction: "Bước 3: Viết lại cho gọn gàng (bỏ ngoặc).",
+                        math: <>2x³ - 6x² + 10x</>,
+                        final: true
+                    }
                 ],
                 exercises: [
                     {
-                        type: 'mcq',
+                        problem: <><span className="text-red-500 font-bold">-2x</span> · (3x² - x + 4)</>,
+                        correct: "-6x³ + 2x² - 8x",
+                        options: ["-6x³ + 2x² - 8x", "-6x³ - 2x² + 8x", "-6x³ - x + 4", "6x³ - 2x² + 8x"]
+                    },
+                    {
                         problem: <><span className="text-red-500 font-bold">3x</span> · (x² - 2x + 1)</>,
                         correct: "3x³ - 6x² + 3x",
                         options: ["3x³ - 6x² + 3x", "3x³ - 2x + 1", "3x² - 6x + 3", "3x³ + 6x² + 3x"]
                     },
                     {
-                        type: 'builder',
-                        problem: <><span className="text-red-500 font-bold">-2x</span> · (3x² - x + 4)</>,
-                        correct: "-6x³ + 2x² - 8x",
-                        correctTerms: [
-                            { coef: "-6", varPart: "x³" },
-                            { coef: "2", varPart: "x²" },
-                            { coef: "-8", varPart: "x" }
-                        ]
-                    },
-                    {
-                        type: 'input',
                         problem: <><span className="text-red-500 font-bold">-x</span> · (2x² + 5x - 3)</>,
                         correct: "-2x³ - 5x² + 3x",
+                        options: ["-2x³ - 5x² + 3x", "-2x³ + 5x² - 3x", "2x³ + 5x² - 3x", "-2x³ - 5x - 3"]
                     }
                 ]
             },
             {
                 id: 2,
                 title: "3. Nhị thức × Nhị thức",
-                desc: "Nhân TỪNG hạng tử của đa thức thứ nhất với đa thức thứ hai và thu gọn.",
+                desc: "Nhân TỪNG hạng tử của đa thức thứ nhất với đa thức thứ hai. Hãy chú ý các màu sắc để không bị sót!",
                 problem: <>(<span className="text-blue-600 font-bold">x</span> <span className="text-green-600 font-bold">+ 3</span>)(x - 2)</>,
                 steps: [
-                    { instruction: "Bước 1: Tách và phân phối.", math: <>(<span className="text-blue-600">x² - 2x</span>) + (<span className="text-green-600">3x - 6</span>)</> },
-                    { instruction: "Bước 2: Thu gọn hạng tử đồng dạng.", math: <>x² + x - 6</>, final: true }
+                    {
+                        instruction: "Bước 1: Tách đa thức thứ nhất thành các hạng tử riêng lẻ, nhân mỗi hạng tử với đa thức thứ hai.",
+                        math: <><span className="text-blue-600">x</span>(x - 2) <span className="text-green-600">+ 3</span>(x - 2)</>
+                    },
+                    {
+                        instruction: "Bước 2: Phân phối vào trong ngoặc giống như bài học trước.",
+                        math: <>(<span className="text-blue-600">x² - 2x</span>) + (<span className="text-green-600">3x - 6</span>)</>
+                    },
+                    {
+                        instruction: "Bước 3: Phá ngoặc và xếp cạnh nhau.",
+                        math: <>x² <span className="bg-yellow-200 px-1">- 2x + 3x</span> - 6</>
+                    },
+                    {
+                        instruction: "Bước 4: Thu gọn các hạng tử đồng dạng (-2x + 3x = +1x = x).",
+                        math: <>x² + x - 6</>,
+                        final: true
+                    }
                 ],
                 exercises: [
                     {
-                        type: 'mcq',
+                        problem: <>(<span className="text-blue-600 font-bold">2x</span> <span className="text-green-600 font-bold">- 1</span>)(x + 5)</>,
+                        correct: "2x² + 9x - 5",
+                        options: ["2x² + 9x - 5", "2x² + 11x - 5", "2x² - 9x - 5", "2x² + 9x + 5"]
+                    },
+                    {
                         problem: <>(<span className="text-blue-600 font-bold">x</span> <span className="text-green-600 font-bold">- 3</span>)(x + 4)</>,
                         correct: "x² + x - 12",
                         options: ["x² + x - 12", "x² - x - 12", "x² + 7x - 12", "x² - 12"]
                     },
                     {
-                        type: 'builder',
-                        problem: <>(<span className="text-blue-600 font-bold">2x</span> <span className="text-green-600 font-bold">- 1</span>)(x + 5)</>,
-                        correct: "2x² + 9x - 5",
-                        correctTerms: [
-                            { coef: "2", varPart: "x²" },
-                            { coef: "9", varPart: "x" },
-                            { coef: "-5", varPart: "" }
-                        ]
-                    },
-                    {
-                        type: 'input',
                         problem: <>(<span className="text-blue-600 font-bold">3x</span> <span className="text-green-600 font-bold">+ 2</span>)(x - 1)</>,
                         correct: "3x² - x - 2",
+                        options: ["3x² - x - 2", "3x² + x - 2", "3x² - 5x - 2", "3x² - 2"]
                     }
                 ]
             },
             {
                 id: 3,
                 title: "4. Nhị thức × Đa thức Bậc 2",
-                desc: "Thực hiện tương tự nhưng cẩn thận hơn với các phép tính.",
+                desc: "Tương tự như trước, ta lấy từng hạng tử của nhị thức nhân với TỪNG hạng tử của đa thức bậc 2.",
                 problem: <>(<span className="text-blue-600 font-bold">x</span> <span className="text-green-600 font-bold">- 2</span>)(x² + 3x - 4)</>,
                 steps: [
-                    { instruction: "Bước 1: Phân phối vào trong ngoặc.", math: <>(<span className="text-blue-600">x³ + 3x² - 4x</span>) + (<span className="text-green-600">-2x² - 6x + 8</span>)</> },
-                    { instruction: "Bước 2: Thu gọn.", math: <>x³ + x² - 10x + 8</>, final: true }
+                    {
+                        instruction: "Bước 1: Tách đa thức thứ nhất thành các hạng tử riêng lẻ, nhân mỗi hạng tử với đa thức thứ hai.",
+                        math: <><span className="text-blue-600">x</span>(x² + 3x - 4) <span className="text-green-600">- 2</span>(x² + 3x - 4)</>
+                    },
+                    {
+                        instruction: "Bước 2: Phân phối vào trong ngoặc.",
+                        math: <>(<span className="text-blue-600">x³ + 3x² - 4x</span>) + (<span className="text-green-600">-2x² - 6x + 8</span>)</>
+                    },
+                    {
+                        instruction: "Bước 3: Phá ngoặc và xếp các hạng tử cùng bậc cạnh nhau.",
+                        math: <>x³ <span className="bg-yellow-200 px-1">+ 3x² - 2x²</span> <span className="bg-orange-200 px-1">- 4x - 6x</span> + 8</>
+                    },
+                    {
+                        instruction: "Bước 4: Thu gọn các hạng tử đồng dạng.",
+                        math: <>x³ + x² - 10x + 8</>,
+                        final: true
+                    }
                 ],
                 exercises: [
                     {
-                        type: 'mcq',
+                        problem: <>(<span className="text-blue-600 font-bold">x</span> <span className="text-green-600 font-bold">+ 1</span>)(2x² - x + 3)</>,
+                        correct: "2x³ + x² + 2x + 3",
+                        options: ["2x³ + x² + 2x + 3", "2x³ - x² + 2x + 3", "2x³ + x² - 2x + 3", "2x³ + 3x² + 2x + 3"]
+                    },
+                    {
                         problem: <>(<span className="text-blue-600 font-bold">x</span> <span className="text-green-600 font-bold">- 2</span>)(x² + 2x + 5)</>,
                         correct: "x³ + x - 10",
                         options: ["x³ + x - 10", "x³ + 9x - 10", "x³ - x - 10", "x³ - 10"]
                     },
                     {
-                        type: 'builder',
-                        problem: <>(<span className="text-blue-600 font-bold">x</span> <span className="text-green-600 font-bold">+ 1</span>)(2x² - x + 3)</>,
-                        correct: "2x³ + x² + 2x + 3",
-                        correctTerms: [
-                            { coef: "2", varPart: "x³" },
-                            { coef: "1", varPart: "x²" },
-                            { coef: "2", varPart: "x" },
-                            { coef: "3", varPart: "" }
-                        ]
-                    },
-                    {
-                        type: 'input',
                         problem: <>(<span className="text-blue-600 font-bold">2x</span> <span className="text-green-600 font-bold">- 1</span>)(x² - 3x + 2)</>,
                         correct: "2x³ - 7x² + 7x - 2",
+                        options: ["2x³ - 7x² + 7x - 2", "2x³ - 5x² + 7x - 2", "2x³ - 7x² + x - 2", "2x³ - 7x² + 4x - 2"]
                     }
                 ]
             },
             {
                 id: 4,
                 title: "5. Đa thức Bậc 2 × Bậc 2",
-                desc: "Thử thách lớn nhất! Hãy kiên nhẫn làm từng bước.",
+                desc: "Thử thách lớn nhất! Biểu thức dài hơn nhưng quy tắc thì không đổi. Hãy kiên nhẫn làm từng bước.",
                 problem: <>(<span className="text-blue-600 font-bold">x²</span> <span className="text-green-600 font-bold">+ 2x</span> <span className="text-orange-600 font-bold">- 1</span>)(x² - x + 3)</>,
                 steps: [
-                    { instruction: "Bước 1: Phân phối từng cụm.", math: <>(<span className="text-blue-600">x⁴ - x³ + 3x²</span>) + (<span className="text-green-600">2x³ - 2x² + 6x</span>) + (<span className="text-orange-600">-x² + x - 3</span>)</> },
-                    { instruction: "Bước 2: Thu gọn.", math: <>x⁴ + x³ + 7x - 3</>, final: true }
+                    {
+                        instruction: "Bước 1: Tách 3 hạng tử của đa thức thứ nhất, nhân từng cái với đa thức thứ hai.",
+                        math: <><span className="text-blue-600">x²</span>(x² - x + 3) <span className="text-green-600">+ 2x</span>(x² - x + 3) <span className="text-orange-600">- 1</span>(x² - x + 3)</>
+                    },
+                    {
+                        instruction: "Bước 2: Phân phối từng cụm. Cẩn thận với cụm cuối cùng (nhân với -1).",
+                        math: <>(<span className="text-blue-600">x⁴ - x³ + 3x²</span>) + (<span className="text-green-600">2x³ - 2x² + 6x</span>) + (<span className="text-orange-600">-x² + x - 3</span>)</>
+                    },
+                    {
+                        instruction: "Bước 3: Bỏ ngoặc và nhóm các hạng tử cùng bậc lại gần nhau.",
+                        math: <>x⁴ + (<span className="text-purple-600">-x³ + 2x³</span>) + (<span className="text-teal-600">3x² - 2x² - x²</span>) + (<span className="text-pink-600">6x + x</span>) - 3</>
+                    },
+                    {
+                        instruction: "Bước 4: Thu gọn. Chú ý: (3x² - 2x² - x²) = 0x² nên nó biến mất!",
+                        math: <>x⁴ + x³ + 7x - 3</>,
+                        final: true
+                    }
                 ],
                 exercises: [
                     {
-                        type: 'mcq',
+                        problem: <>(<span className="text-blue-600 font-bold">x²</span> <span className="text-green-600 font-bold">- 2x</span> <span className="text-orange-600 font-bold">+ 1</span>)(x² + 2x + 1)</>,
+                        correct: "x⁴ - 2x² + 1",
+                        options: ["x⁴ - 2x² + 1", "x⁴ + 2x² + 1", "x⁴ - 4x² + 1", "x⁴ + 4x² - 1"]
+                    },
+                    {
                         problem: <>(<span className="text-blue-600 font-bold">x²</span> <span className="text-green-600 font-bold">+ x</span> <span className="text-orange-600 font-bold">+ 1</span>)(x² - x + 1)</>,
                         correct: "x⁴ + x² + 1",
                         options: ["x⁴ + x² + 1", "x⁴ - x² + 1", "x⁴ + 2x² + 1", "x⁴ + 1"]
                     },
                     {
-                        type: 'builder',
-                        problem: <>(<span className="text-blue-600 font-bold">x²</span> <span className="text-green-600 font-bold">- 2x</span> <span className="text-orange-600 font-bold">+ 1</span>)(x² + 2x + 1)</>,
-                        correct: "x⁴ - 2x² + 1",
-                        correctTerms: [
-                            { coef: "1", varPart: "x⁴" },
-                            { coef: "-2", varPart: "x²" },
-                            { coef: "1", varPart: "" }
-                        ]
-                    },
-                    {
-                        type: 'input',
                         problem: <>(<span className="text-blue-600 font-bold">2x²</span> <span className="text-green-600 font-bold">- x</span> <span className="text-orange-600 font-bold">+ 3</span>)(x² + 2x - 1)</>,
                         correct: "2x⁴ + 3x³ - x² + 7x - 3",
+                        options: ["2x⁴ + 3x³ - x² + 7x - 3", "2x⁴ - 5x³ - x² + 7x - 3", "2x⁴ + 3x³ + 3x² + 7x - 3", "2x⁴ + 3x³ - x² - 5x - 3"]
                     }
                 ]
             }
         ];
 
-        // Biến phổ biến để kéo thả
-        const DRAG_VARS = ["x⁵", "x⁴", "x³", "x²", "x", ""]; 
-
         function App() {
             const [activeLevel, setActiveLevel] = useState(0);
             const [currentStep, setCurrentStep] = useState(0);
             
-            // --- HÀNG ĐỢI CÂU HỎI ---
-            const [exerciseQueue, setExerciseQueue] = useState(LEVELS[0].exercises);
-            const [exerciseQueueIndex, setExerciseQueueIndex] = useState(0);
-            
-            // Trạng thái kiểm tra chung
-            const [isExercisePassed, setIsExercisePassed] = useState(false);
-            const [hasCheckedInput, setHasCheckedInput] = useState(false);
-            
-            // State cho Trắc nghiệm
+            // State cho phần bài tập
+            const [exerciseIndex, setExerciseIndex] = useState(0);
             const [selectedAnswer, setSelectedAnswer] = useState(null);
+            const [isExercisePassed, setIsExercisePassed] = useState(false);
             const [shuffledOptions, setShuffledOptions] = useState([]);
             
-            // State cho Điền khuyết
-            const [inputValue, setInputValue] = useState("");
-            
-            // State cho Kéo thả & Lắp ráp (Builder)
-            const [builderCoefs, setBuilderCoefs] = useState([]);
-            const [builderVars, setBuilderVars] = useState([]);
-            const [activeDragItem, setActiveDragItem] = useState(null); 
-
+            // State cho Chứng nhận
             const [showCertificate, setShowCertificate] = useState(false);
+
             const contentEndRef = useRef(null);
 
             const levelData = LEVELS[activeLevel];
             const isCompleted = currentStep >= levelData.steps.length;
-            const currentExercise = exerciseQueue[exerciseQueueIndex];
-            const isLevelFullyPassed = isCompleted && exerciseQueueIndex >= exerciseQueue.length;
+            const currentExercise = levelData.exercises[exerciseIndex % levelData.exercises.length];
 
+            // Xáo trộn đáp án mỗi khi chuyển bài học hoặc chuyển câu hỏi mới
             useEffect(() => {
-                if (!currentExercise) return;
-                
-                if (currentExercise.type === 'mcq' && currentExercise.options) {
-                    const currentOptions = [...currentExercise.options];
-                    for (let i = currentOptions.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [currentOptions[i], currentOptions[j]] = [currentOptions[j], currentOptions[i]];
-                    }
-                    setShuffledOptions(currentOptions);
-                } else if (currentExercise.type === 'builder') {
-                    setBuilderCoefs(Array(currentExercise.correctTerms.length).fill(""));
-                    setBuilderVars(Array(currentExercise.correctTerms.length).fill(null));
-                    setActiveDragItem(null);
+                const currentOptions = [...currentExercise.options];
+                for (let i = currentOptions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [currentOptions[i], currentOptions[j]] = [currentOptions[j], currentOptions[i]];
                 }
-            }, [activeLevel, exerciseQueueIndex, currentExercise]);
+                setShuffledOptions(currentOptions);
+            }, [activeLevel, exerciseIndex]);
 
+            // Cuộn xuống mượt mà
             useEffect(() => {
                 if (contentEndRef.current && !showCertificate) {
                     contentEndRef.current.scrollIntoView({ behavior: 'smooth' });
                 }
-            }, [currentStep, activeLevel, selectedAnswer, hasCheckedInput, showCertificate, exerciseQueueIndex]);
+            }, [currentStep, activeLevel, selectedAnswer, showCertificate]);
 
-            const nextStep = () => { if (currentStep < levelData.steps.length) setCurrentStep(c => c + 1); };
-
-            const resetExerciseStates = () => {
-                setSelectedAnswer(null);
-                setInputValue("");
-                setHasCheckedInput(false);
-                setIsExercisePassed(false);
-                setActiveDragItem(null);
+            const nextStep = () => {
+                if (currentStep < levelData.steps.length) {
+                    setCurrentStep(c => c + 1);
+                }
             };
 
             const resetSteps = () => {
                 setCurrentStep(0);
-                resetExerciseStates();
-                setExerciseQueue([...LEVELS[activeLevel].exercises]);
-                setExerciseQueueIndex(0);
+                setSelectedAnswer(null);
+                setIsExercisePassed(false);
+                setExerciseIndex(0);
             };
 
             const changeLevel = (idx) => {
                 setActiveLevel(idx);
                 setCurrentStep(0);
-                resetExerciseStates();
-                setExerciseQueue([...LEVELS[idx].exercises]);
-                setExerciseQueueIndex(0);
+                setSelectedAnswer(null);
+                setIsExercisePassed(false);
+                setExerciseIndex(0);
+            };
+
+            const handleAnswer = (opt) => {
+                if (selectedAnswer !== null) return; // Không cho bấm lại khi đã chọn
+                
+                setSelectedAnswer(opt);
+                if (opt === currentExercise.correct) {
+                    setIsExercisePassed(true);
+                } else {
+                    setIsExercisePassed(false);
+                }
             };
 
             const nextExercise = () => {
-                setExerciseQueueIndex(prev => prev + 1);
-                resetExerciseStates();
+                setExerciseIndex(prev => prev + 1);
+                setSelectedAnswer(null);
             };
-
-            const handleWrongAnswer = () => {
-                setExerciseQueue(prev => [...prev, currentExercise]);
-            };
-
-            const handleMCQAnswer = (opt) => {
-                if (selectedAnswer !== null) return; 
-                setSelectedAnswer(opt);
-                const isCorrect = opt === currentExercise.correct;
-                setIsExercisePassed(isCorrect);
-                if (!isCorrect) handleWrongAnswer();
-            };
-
-            const handleCheckInput = () => {
-                if (!inputValue.trim()) return;
-                setHasCheckedInput(true);
-                const isCorrect = normalizeAnswer(inputValue) === normalizeAnswer(currentExercise.correct);
-                setIsExercisePassed(isCorrect);
-                if (!isCorrect) handleWrongAnswer();
-            };
-
-            const handleCheckBuilder = () => {
-                setHasCheckedInput(true);
-                let isCorrect = true;
-                for (let i = 0; i < currentExercise.correctTerms.length; i++) {
-                    const expectedCoef = Number(currentExercise.correctTerms[i].coef);
-                    const userCoef = Number(builderCoefs[i]);
-                    const expectedVar = currentExercise.correctTerms[i].varPart;
-                    const userVar = builderVars[i] === null ? undefined : builderVars[i];
-
-                    if (expectedCoef !== userCoef || expectedVar !== userVar) {
-                        isCorrect = false;
-                        break;
-                    }
-                }
-                setIsExercisePassed(isCorrect);
-                if (!isCorrect) handleWrongAnswer();
-            };
-
-            const updateBuilderVar = (index, value) => {
-                if(hasCheckedInput) return;
-                const newVars = [...builderVars];
-                newVars[index] = value;
-                setBuilderVars(newVars);
-            };
-
-            const getExerciseTitle = () => {
-                if (!currentExercise) return "";
-                if (currentExercise.type === 'mcq') return "Trắc Nghiệm Nhanh";
-                if (currentExercise.type === 'builder') return "Lắp Ráp Đa Thức";
-                return "Tự Tính & Điền Đáp Án";
-            };
-
-            const getExerciseIcon = () => {
-                if (!currentExercise) return null;
-                if (currentExercise.type === 'mcq') return <ListChecks className="w-6 h-6" />;
-                if (currentExercise.type === 'builder') return <Blocks className="w-5 h-5" />;
-                return <Edit3 className="w-5 h-5" />;
-            };
-
-            const isRetry = exerciseQueueIndex >= levelData.exercises.length;
 
             return (
                 <div className="flex flex-col md:flex-row min-h-screen">
+                    {/* Sidebar / Menu */}
                     <div className="w-full md:w-1/4 lg:w-1/5 bg-slate-900 text-white p-6 shadow-xl z-10 flex flex-col h-auto md:h-screen sticky top-0">
                         <div className="flex items-center gap-3 mb-8">
                             <BookOpen className="w-8 h-8 text-blue-400" />
                             <h1 className="text-xl font-bold leading-tight">Bài Học<br/>Mở Đầu</h1>
                         </div>
+                        
                         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Các cấp độ khám phá</div>
+                        
                         <nav className="flex flex-col gap-2">
-                            {LEVELS.map((lvl, idx) => {
-                                const isActive = activeLevel === idx;
-                                const isDone = activeLevel > idx || (isActive && isLevelFullyPassed);
-                                
-                                return (
-                                <button key={idx} onClick={() => changeLevel(idx)} className={`text-left p-4 rounded-xl transition-all duration-200 flex items-center justify-between group ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}>
-                                    <span className="font-medium text-sm md:text-base flex items-center gap-2">
-                                        {isDone && <CheckCircle className="w-4 h-4 text-green-400" />}
-                                        {lvl.title}
-                                    </span>
-                                    {isActive && <ChevronRight className="w-5 h-5 opacity-70" />}
+                            {LEVELS.map((lvl, idx) => (
+                                <button 
+                                    key={idx}
+                                    onClick={() => changeLevel(idx)}
+                                    className={`text-left p-4 rounded-xl transition-all duration-200 flex items-center justify-between group ${activeLevel === idx ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'}`}
+                                >
+                                    <span className="font-medium text-sm md:text-base">{lvl.title}</span>
+                                    {activeLevel === idx && <ChevronRight className="w-5 h-5 opacity-70" />}
                                 </button>
-                            )})}
+                            ))}
                         </nav>
+
                         <div className="mt-auto pt-8 hidden md:block">
-                            <p className="text-xs text-slate-400 bg-slate-800 p-4 rounded-xl border border-slate-700">
-                                <b>Quy định thực hành:</b><br/>Làm sai ở phần nào, bạn sẽ phải làm lại đúng dạng đó vào cuối bài.
-                            </p>
+                            <p className="text-xs text-slate-500">Hoạt động này giúp hiểu rõ bản chất của việc phân phối và thu gọn đa thức.</p>
                         </div>
                     </div>
 
-                    <div className="flex-1 p-4 md:p-8 lg:p-12 bg-slate-50 relative overflow-y-auto pb-32">
+                    {/* Main Content Area */}
+                    <div className="flex-1 p-4 md:p-8 lg:p-12 bg-slate-50 relative overflow-y-auto">
                         <div className="max-w-4xl mx-auto">
                             
+                            {/* Header */}
                             <header className="mb-10">
                                 <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 mb-4">{levelData.title}</h2>
                                 <p className="text-lg text-slate-600 bg-white p-4 rounded-xl border border-slate-200 shadow-sm leading-relaxed">
@@ -432,14 +398,17 @@
                                 </p>
                             </header>
 
-                            <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden mb-12">
+                            {/* Main Board */}
+                            <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden mb-24">
+                                {/* Problem Statement */}
                                 <div className="bg-blue-50 border-b border-slate-200 p-6 md:p-8 text-center">
-                                    <div className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-2">Đề Bài Mẫu</div>
+                                    <div className="text-sm font-bold text-blue-500 uppercase tracking-wider mb-2">Đề Bài</div>
                                     <div className="text-4xl md:text-5xl math-font tracking-wide">
                                         {levelData.problem}
                                     </div>
                                 </div>
 
+                                {/* Steps Area */}
                                 <div className="p-6 md:p-8 flex flex-col gap-8">
                                     {currentStep === 0 && (
                                         <div className="text-center py-10 text-slate-400 italic">
@@ -463,241 +432,85 @@
                                         </div>
                                     ))}
 
-                                    {/* PHẦN THỰC HÀNH */}
-                                    {isCompleted && !isLevelFullyPassed && currentExercise && (
+                                    {/* Khối Thực Hành (Hiển thị sau khi hoàn thành các bước) */}
+                                    {isCompleted && (
                                         <div className="mt-8 p-6 md:p-8 bg-indigo-50 border-2 border-indigo-200 rounded-3xl animate-fade-in-down">
-                                            
-                                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-lg relative">
-                                                        {getExerciseIcon()}
-                                                        <div className="absolute -top-1 -right-1 bg-amber-400 text-amber-900 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white">
-                                                            {exerciseQueueIndex + 1}
-                                                        </div>
-                                                    </div>
-                                                    <h3 className="text-xl md:text-2xl font-bold text-indigo-900">
-                                                        Thực hành: {getExerciseTitle()}
-                                                    </h3>
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 rounded-full bg-indigo-500 text-white flex items-center justify-center font-bold shadow-lg">
+                                                    ?
                                                 </div>
-                                                
-                                                <div className="flex items-center gap-3 self-start md:self-auto">
-                                                    <span className="text-sm font-semibold text-indigo-600 bg-indigo-100 px-3 py-1 rounded-full border border-indigo-200">
-                                                        Câu {exerciseQueueIndex + 1} / {exerciseQueue.length}
-                                                    </span>
-                                                    {isRetry && (
-                                                        <span className="px-3 py-1 bg-orange-100 border border-orange-300 text-orange-700 text-sm font-bold rounded-full animate-pulse shadow-sm flex items-center gap-1">
-                                                            <RotateCcw className="w-4 h-4" /> Làm lại
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <h3 className="text-xl md:text-2xl font-bold text-indigo-900">Thực Hành Ngay!</h3>
                                             </div>
+                                            <p className="text-indigo-700 mb-6 font-medium">Bạn đã hiểu phần khám phá chưa? Hãy thử tính kết quả của phép nhân tương tự này nhé:</p>
                                             
-                                            <div className="text-3xl md:text-4xl math-font text-center mb-8 font-bold bg-white py-6 rounded-2xl shadow-sm border border-indigo-100 overflow-x-auto whitespace-nowrap px-4">
+                                            <div className="text-3xl md:text-4xl math-font text-center mb-8 font-bold bg-white py-6 rounded-2xl shadow-sm border border-indigo-100">
                                                 {currentExercise.problem}
                                             </div>
 
-                                            {/* RENDER DẠNG MCQ */}
-                                            {currentExercise.type === 'mcq' && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in-down">
-                                                    {shuffledOptions.map((opt, idx) => {
-                                                        let btnClass = "bg-white border-2 border-indigo-100 text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 shadow-sm hover:shadow-md";
-                                                        if (selectedAnswer !== null) {
-                                                            if (opt === currentExercise.correct) btnClass = "bg-green-100 border-2 border-green-500 text-green-800 font-bold shadow-md";
-                                                            else if (opt === selectedAnswer) btnClass = "bg-red-50 border-2 border-red-400 text-red-700 opacity-70";
-                                                            else btnClass = "bg-white border-2 border-slate-100 text-slate-400 opacity-50 cursor-not-allowed";
-                                                        }
-                                                        return (
-                                                            <button key={idx} disabled={selectedAnswer !== null} onClick={() => handleMCQAnswer(opt)} className={`p-4 rounded-xl text-xl math-font transition-all duration-200 ${btnClass}`}>
-                                                                {opt}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-
-                                            {/* RENDER DẠNG BUILDER */}
-                                            {currentExercise.type === 'builder' && (
-                                                <div className="flex flex-col items-center gap-8 animate-fade-in-down w-full">
-                                                    <div className="bg-indigo-100/60 p-4 rounded-xl text-sm text-indigo-800 w-full border border-indigo-200 shadow-sm">
-                                                        <p><b>Hướng dẫn:</b> Hãy tách kết quả thành các hạng tử. Mỗi khung dưới đây là 1 hạng tử.</p>
-                                                        <ul className="list-disc pl-5 mt-2 text-indigo-700">
-                                                            <li>Nhập chính xác hệ số (kể cả <b>1</b> hoặc <b>-1</b>). Nhập dấu trừ (-) liền với số.</li>
-                                                            <li>Kéo thả hoặc <b>bấm chọn</b> phần biến ở bên dưới để lấp vào ô trống.</li>
-                                                        </ul>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-h-[120px]">
-                                                        {currentExercise.correctTerms.map((term, i) => {
-                                                            const isUserCoefCorrect = hasCheckedInput && Number(builderCoefs[i]) === Number(term.coef);
-                                                            const isUserVarCorrect = hasCheckedInput && builderVars[i] === term.varPart;
-
-                                                            return (
-                                                                <div key={i} className="flex flex-col items-center gap-2">
-                                                                    <div className={`flex items-center gap-1 p-2 rounded-xl transition-all border-2
-                                                                        ${hasCheckedInput 
-                                                                            ? (isUserCoefCorrect && isUserVarCorrect ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-300') 
-                                                                            : 'bg-slate-50 border-slate-200 hover:border-indigo-300 shadow-sm'}`}>
-                                                                        
-                                                                        <input
-                                                                            type="number"
-                                                                            value={builderCoefs[i] !== undefined ? builderCoefs[i] : ""}
-                                                                            onChange={(e) => {
-                                                                                const newCoefs = [...builderCoefs];
-                                                                                newCoefs[i] = e.target.value;
-                                                                                setBuilderCoefs(newCoefs);
-                                                                            }}
-                                                                            disabled={hasCheckedInput}
-                                                                            placeholder="Hệ số"
-                                                                            className={`w-16 md:w-20 h-12 text-center text-lg md:text-xl font-bold border rounded-lg focus:outline-none focus:ring-2
-                                                                                ${hasCheckedInput 
-                                                                                    ? (isUserCoefCorrect ? 'border-green-500 text-green-700 bg-white' : 'border-red-500 text-red-700 bg-white') 
-                                                                                    : 'border-slate-300 focus:border-indigo-500'}`}
-                                                                        />
-                                                                        
-                                                                        <div
-                                                                            onDragOver={(e) => e.preventDefault()}
-                                                                            onDrop={(e) => {
-                                                                                e.preventDefault();
-                                                                                updateBuilderVar(i, e.dataTransfer.getData('text/plain'));
-                                                                            }}
-                                                                            onClick={() => {
-                                                                                if(hasCheckedInput) return;
-                                                                                if (activeDragItem !== null) {
-                                                                                    updateBuilderVar(i, activeDragItem);
-                                                                                    setActiveDragItem(null);
-                                                                                } else {
-                                                                                    updateBuilderVar(i, null);
-                                                                                }
-                                                                            }}
-                                                                            className={`w-16 md:w-20 h-12 flex items-center justify-center text-lg md:text-xl font-bold math-font border-2 rounded-lg transition-colors cursor-pointer
-                                                                                ${builderVars[i] !== null && builderVars[i] !== undefined
-                                                                                    ? (hasCheckedInput 
-                                                                                        ? (isUserVarCorrect ? 'border-green-500 bg-green-100 text-green-800' : 'border-red-500 bg-red-100 text-red-800')
-                                                                                        : 'border-blue-500 bg-blue-100 text-blue-800 border-solid')
-                                                                                    : (activeDragItem !== null 
-                                                                                        ? 'border-orange-400 border-dashed bg-orange-50 animate-pulse text-orange-400' 
-                                                                                        : 'border-dashed border-slate-300 text-slate-400 hover:border-blue-400 bg-white')}`}
-                                                                        >
-                                                                            {builderVars[i] === "" ? <span className="text-xs font-sans text-slate-600">Số tự do</span> 
-                                                                             : builderVars[i] === null ? (activeDragItem !== null ? 'Bấm thả' : 'Biến') 
-                                                                             : builderVars[i]}
-                                                                        </div>
-                                                                    </div>
-                                                                    {hasCheckedInput && (!isUserCoefCorrect || !isUserVarCorrect) && (
-                                                                        <div className="text-sm font-bold text-red-600 bg-red-100 px-2 py-1 rounded shadow-sm border border-red-200">
-                                                                            Sửa: {term.coef}{term.varPart === "" ? "" : term.varPart}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-
-                                                    {!hasCheckedInput && (
-                                                        <div className="flex flex-col items-center gap-3 w-full">
-                                                            <div className="flex flex-wrap justify-center gap-3">
-                                                                {DRAG_VARS.map((v, i) => (
-                                                                    <div
-                                                                        key={i}
-                                                                        draggable
-                                                                        onDragStart={(e) => {
-                                                                            e.dataTransfer.setData('text/plain', v);
-                                                                            setActiveDragItem(null);
-                                                                        }}
-                                                                        onClick={() => setActiveDragItem(v === activeDragItem ? null : v)}
-                                                                        className={`cursor-grab active:cursor-grabbing px-4 py-2 border-2 rounded-lg font-bold math-font text-xl shadow-sm transition-all select-none
-                                                                            ${activeDragItem === v 
-                                                                                ? 'ring-4 ring-orange-400 bg-orange-100 border-orange-500 text-orange-800 scale-110' 
-                                                                                : 'bg-indigo-100 hover:bg-indigo-200 border-indigo-300 text-indigo-800 hover:-translate-y-1'}`}
-                                                                    >
-                                                                        {v === "" ? <span className="font-sans text-sm">Số tự do</span> : v}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    {!hasCheckedInput && (
-                                                        <button onClick={handleCheckBuilder} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-1 mt-2">
-                                                            Kiểm tra lắp ráp
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* RENDER DẠNG INPUT */}
-                                            {currentExercise.type === 'input' && (
-                                                <div className="flex flex-col items-center gap-4 animate-fade-in-down">
-                                                    <input
-                                                        type="text"
-                                                        value={inputValue}
-                                                        onChange={(e) => setInputValue(e.target.value)}
-                                                        onKeyDown={(e) => { if (e.key === 'Enter' && !hasCheckedInput) handleCheckInput(); }}
-                                                        disabled={hasCheckedInput}
-                                                        placeholder="Nhập đáp án (VD: 2x^3 - x + 1)"
-                                                        className={`w-full max-w-lg p-4 text-2xl math-font border-2 rounded-xl text-center shadow-sm focus:outline-none focus:ring-4 transition-all
-                                                            ${hasCheckedInput 
-                                                                ? (isExercisePassed ? 'border-green-500 bg-green-50 text-green-800' : 'border-red-400 bg-red-50 text-red-700') 
-                                                                : 'border-indigo-300 focus:border-indigo-500 focus:ring-indigo-200 bg-white'}`}
-                                                    />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {shuffledOptions.map((opt, idx) => {
+                                                    let btnClass = "bg-white border-2 border-indigo-100 text-slate-700 hover:border-indigo-400 hover:bg-indigo-50";
                                                     
-                                                    {!hasCheckedInput && (
-                                                        <>
-                                                            <p className="text-sm text-indigo-600 font-medium bg-indigo-100/50 px-4 py-2 rounded-lg text-center">
-                                                                💡 Gợi ý: Dùng dấu <b>^</b> để viết số mũ (VD: <b>x^2</b>). Rút gọn tối đa, bỏ hệ số 1 (viết <b>x</b> thay vì 1x).
-                                                            </p>
-                                                            <button onClick={handleCheckInput} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-1 mt-2">
-                                                                Kiểm tra đáp án
-                                                            </button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
+                                                    if (selectedAnswer !== null) {
+                                                        if (opt === currentExercise.correct) {
+                                                            btnClass = "bg-green-100 border-2 border-green-500 text-green-800 font-bold";
+                                                        } else if (opt === selectedAnswer) {
+                                                            btnClass = "bg-red-50 border-2 border-red-400 text-red-700 opacity-70";
+                                                        } else {
+                                                            btnClass = "bg-white border-2 border-slate-100 text-slate-400 opacity-50 cursor-not-allowed";
+                                                        }
+                                                    }
 
-                                            {/* PHẢN HỒI */}
-                                            {(selectedAnswer !== null || hasCheckedInput) && (
-                                                <div className={`mt-8 p-6 rounded-xl flex flex-col items-center md:items-start gap-4 animate-fade-in-down border-2 shadow-sm ${isExercisePassed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                                                    <div className={`text-lg font-bold flex flex-wrap items-center gap-2 ${isExercisePassed ? 'text-green-700' : 'text-red-700'}`}>
+                                                    return (
+                                                        <button 
+                                                            key={idx}
+                                                            disabled={selectedAnswer !== null}
+                                                            onClick={() => handleAnswer(opt)}
+                                                            className={`p-4 rounded-xl text-xl math-font transition-all duration-200 ${btnClass}`}
+                                                        >
+                                                            {opt}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Phản hồi sau khi chọn đáp án */}
+                                            {selectedAnswer !== null && (
+                                                <div className={`mt-6 p-5 rounded-xl flex flex-col items-start gap-4 animate-fade-in-down border-2 ${isExercisePassed ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                                    <div className={`text-lg font-bold flex items-center gap-3 ${isExercisePassed ? 'text-green-700' : 'text-red-700'}`}>
                                                         {isExercisePassed ? (
-                                                            <><CheckCircle className="w-6 h-6 inline" /> Tuyệt vời! Bạn đã làm đúng câu này.</>
+                                                            <><CheckCircle className="w-6 h-6" /> Tuyệt vời! Bạn đã chọn chính xác.</>
                                                         ) : (
                                                             <>
-                                                                <RotateCcw className="w-6 h-6 inline" /> Sai rồi. 
-                                                                <span className="font-normal whitespace-nowrap ml-1">Đáp án đúng phải là:</span> 
-                                                                <span className="math-font text-2xl ml-1 text-slate-800 bg-white px-3 py-1 rounded-lg border border-red-200 shadow-sm">{currentExercise.correct}</span>
+                                                                <RotateCcw className="w-6 h-6" /> Rất tiếc, chưa chính xác. 
+                                                                <span className="font-normal">Đáp án đúng là:</span> 
+                                                                <span className="math-font text-2xl ml-1">{currentExercise.correct}</span>
                                                             </>
                                                         )}
                                                     </div>
                                                     
-                                                    <div className="w-full flex justify-end mt-2">
-                                                        <button onClick={nextExercise} className={`px-6 py-3 rounded-xl shadow-md transition-colors font-bold flex items-center gap-2 w-full justify-center md:w-auto ${isExercisePassed ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
-                                                            {isExercisePassed ? (
-                                                                <>Tiếp tục <ArrowRight className="w-5 h-5" /></>
-                                                            ) : (
-                                                                <>Đã hiểu, câu này sẽ làm lại sau <ArrowRight className="w-5 h-5" /></>
-                                                            )}
+                                                    {/* Nút "Thử câu hỏi mới" khi làm sai */}
+                                                    {!isExercisePassed && (
+                                                        <button 
+                                                            onClick={nextExercise}
+                                                            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-md transition-colors font-semibold flex items-center gap-2"
+                                                        >
+                                                            <RotateCcw className="w-5 h-5" /> Thử một câu khác
                                                         </button>
-                                                    </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
                                     )}
-
-                                    {isLevelFullyPassed && (
-                                        <div className="mt-8 p-8 bg-green-50 border-2 border-green-200 rounded-3xl animate-fade-in-down flex flex-col items-center text-center">
-                                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                                                <CheckCircle className="w-10 h-10 text-green-500" />
-                                            </div>
-                                            <h3 className="text-2xl font-bold text-green-800 mb-2">Chúc mừng!</h3>
-                                            <p className="text-green-700">Bạn đã vượt qua toàn bộ thử thách của cấp độ này (bao gồm cả các câu phải làm lại).</p>
-                                        </div>
-                                    )}
+                                    
                                     <div ref={contentEndRef} />
                                 </div>
                             </div>
+
                         </div>
                     </div>
 
+                    {/* Bottom Floating Control Bar */}
                     <div className="fixed bottom-0 left-0 md:left-[25%] lg:left-[20%] right-0 bg-white border-t border-slate-200 p-4 md:p-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] flex justify-between items-center z-20">
                         <button 
                             onClick={resetSteps}
@@ -705,56 +518,90 @@
                             disabled={currentStep === 0}
                         >
                             <RotateCcw className="w-5 h-5" />
-                            <span className="hidden sm:inline">Làm lại từ đầu</span>
+                            <span className="hidden sm:inline">Làm lại bài này</span>
                         </button>
 
                         {!isCompleted ? (
-                            <button onClick={nextStep} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-1 active:scale-95 text-lg">
+                            <button 
+                                onClick={nextStep}
+                                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-1 active:scale-95 text-lg"
+                            >
                                 <PlayCircle className="w-6 h-6" /> Bước tiếp theo
                             </button>
-                        ) : !isLevelFullyPassed ? (
-                            <div className="flex items-center gap-2 px-4 md:px-6 py-3 bg-indigo-50 text-indigo-500 rounded-xl font-bold text-sm md:text-lg border border-indigo-100 text-center animate-pulse">
-                                Hoàn thành các bài tập bên trên!
-                            </div>
-                        ) : activeLevel < LEVELS.length - 1 ? (
-                            <button onClick={() => changeLevel(activeLevel + 1)} className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-500/30 transition-all transform hover:-translate-y-1 active:scale-95 text-lg animate-pulse">
-                                Sang Bài {activeLevel + 2} <ChevronRight className="w-5 h-5" />
-                            </button>
                         ) : (
-                            <button onClick={() => setShowCertificate(true)} className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/40 transition-all transform hover:-translate-y-1 active:scale-95 text-lg animate-bounce">
-                                <Award className="w-6 h-6" /> Nhận Chứng Nhận
-                            </button>
+                            <div className="flex gap-2">
+                                {!isExercisePassed ? (
+                                    <div className="flex items-center gap-2 px-6 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold text-lg border border-slate-200">
+                                        Hãy vượt qua bài thực hành!
+                                    </div>
+                                ) : activeLevel < LEVELS.length - 1 ? (
+                                    <button 
+                                        onClick={() => changeLevel(activeLevel + 1)}
+                                        className="flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-lg shadow-green-500/30 transition-all transform hover:-translate-y-1 active:scale-95 text-lg animate-pulse"
+                                    >
+                                        Chuyển sang Bài {activeLevel + 2} <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={() => setShowCertificate(true)}
+                                        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-orange-500/40 transition-all transform hover:-translate-y-1 active:scale-95 text-lg animate-bounce"
+                                    >
+                                        <Award className="w-6 h-6" /> Nhận Chứng Nhận!
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
 
+                    {/* Certificate Modal */}
                     {showCertificate && (
                         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                             <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full relative overflow-hidden border-8 border-double border-amber-400 p-8 md:p-12 text-center animate-scale-up">
+                                {/* Decorative Background Elements */}
                                 <div className="absolute top-0 left-0 w-32 h-32 bg-amber-100 rounded-br-full opacity-50"></div>
                                 <div className="absolute bottom-0 right-0 w-32 h-32 bg-amber-100 rounded-tl-full opacity-50"></div>
+                                
                                 <div className="absolute top-4 left-4 text-amber-300"><Sparkles className="w-8 h-8" /></div>
                                 <div className="absolute bottom-4 right-4 text-amber-300"><Sparkles className="w-8 h-8" /></div>
 
+                                {/* Content */}
                                 <div className="relative z-10 flex flex-col items-center">
                                     <div className="mb-6 relative">
                                         <Trophy className="w-24 h-24 text-amber-500 drop-shadow-lg" />
                                         <Sparkles className="w-10 h-10 text-amber-400 absolute -top-2 -right-4 animate-pulse" />
                                     </div>
-                                    <h2 className="text-3xl md:text-4xl font-black text-amber-600 mb-2 uppercase tracking-widest drop-shadow-sm">Chứng Nhận</h2>
-                                    <h3 className="text-xl md:text-2xl font-bold text-slate-700 mb-6 uppercase tracking-wider">Vượt Ải Nhân Đa Thức 1 Biến</h3>
+
+                                    <h2 className="text-3xl md:text-4xl font-black text-amber-600 mb-2 uppercase tracking-widest drop-shadow-sm">
+                                        Chứng Nhận
+                                    </h2>
+                                    <h3 className="text-xl md:text-2xl font-bold text-slate-700 mb-6 uppercase tracking-wider">
+                                        Vượt Ải Nhân Đa Thức 1 Biến
+                                    </h3>
+
                                     <div className="w-3/4 h-px bg-gradient-to-r from-transparent via-amber-300 to-transparent mb-8"></div>
+
                                     <p className="text-lg md:text-xl text-slate-600 mb-8 leading-relaxed px-4 md:px-8">
-                                        Xuất sắc! Em đã chứng minh năng lực tuyệt vời qua cả 3 kỹ năng: Lắp ráp, Tự tính và Chọn nhanh.
+                                        Xin chúc mừng! Em đã xuất sắc chinh phục toàn bộ <strong className="text-amber-600">5 dạng bài</strong> của thử thách Nhân đa thức.
                                         <br/><br/>
                                         <span className="italic text-slate-500 text-base">
-                                            "Thành quả này là minh chứng cho sự kiên nhẫn. Những câu làm sai không cản bước được em, mà chỉ làm cho kiến thức thêm vững vàng!"
+                                            "Thành quả này là minh chứng cho sự kiên nhẫn và tư duy logic của em. Chúc em vượt Thử thách sắp tới một cách thành công!"
                                         </span>
                                     </p>
+
                                     <div className="flex gap-4 mt-4">
-                                        <button onClick={() => setShowCertificate(false)} className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors border border-slate-300">
+                                        <button 
+                                            onClick={() => setShowCertificate(false)}
+                                            className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors border border-slate-300"
+                                        >
                                             Đóng lại
                                         </button>
-                                        <button onClick={() => { setShowCertificate(false); changeLevel(0); }} className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex items-center gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                setShowCertificate(false);
+                                                changeLevel(0);
+                                            }}
+                                            className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl shadow-lg transition-transform hover:-translate-y-1 flex items-center gap-2"
+                                        >
                                             <RotateCcw className="w-5 h-5" /> Chơi lại từ đầu
                                         </button>
                                     </div>
